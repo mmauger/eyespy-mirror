@@ -1,4 +1,4 @@
-;;; eyespy.el --- Spy on sexps in Messages buffer  -*- lexical-binding: t; -*-
+;;; eyespy.el --- Spy on sexps by displaying in the Messages buffer  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2025  Michael R. Mauger
 
@@ -255,16 +255,29 @@ the `eyespy-is-caller' property for special cases."
             (throw 'caller (cons func args)))))))))
 
 ;; Define the icon symbol to identify the eyespy messaging function and it's messages
+;;;###autoload
 (defun eyespy--customize-set-icon (option value)
-  "Set the eyespy OPTION (icon) to VALUE, and define macro to emit a message."
-  (set-default-toplevel-value option value)
-  (eval (list 'defmacro value '(fmt &rest args)
-              "Eyespy Messaging"
-              (list 'eyespy-message (list 'quote value) '(cons fmt args)))))
+  "Set the eyespy OPTION (icon) to VALUE, and define macro to emit a message.
+
+To avoid duplicate messages and repeated definition of the macro, only
+process if the VALUE has changed."
+  (let ((old-value (ignore-errors
+                      (default-toplevel-value option))))
+    (unless (eq value old-value)
+      (set-default-toplevel-value option value)
+      ;; Erase the old macro; define the new one
+      (makunbound old-value)
+      (makunbound value)
+      (eval `(defmacro ,value (fmt &rest args)
+               ,(format "Calls `eyespy-message' with %S and (FMT . ARGS)." value)
+               (eyespy-message (quote ,value) (cons fmt args))))
+      ;; Announce the new setting
+      (message "Eyespy with my little %s..." value))
+    value))
 
 ;;;###autoload
 (defcustom eyespy-icon '👀
-  "The command for eyespy messaging and the prefix in the `*messages*' buffer."
+  "The command for eyespy messaging and the prefix in the `*Messages*' buffer."
   :set #'eyespy--customize-set-icon
   :initialize #'custom-initialize-set
   :type 'symbol)
@@ -333,8 +346,6 @@ Bind this to a function key to easily insert an eyespy message."
          (apply #'message ,(concat "%s %S  \N{Long Rightwards Arrow From Bar}  " fmt)
                 (quote ,icon) (eyespy-caller) ,varg)
          ,retval))))
-
-(message "Eyespy with my little %s..." eyespy-icon)
 
 (provide 'eyespy)
 ; LocalWords:  eyespy

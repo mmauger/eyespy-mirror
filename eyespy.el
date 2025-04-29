@@ -345,10 +345,10 @@ Bind this to a function key to easily insert an eyespy message."
     ;; Generate the macro code to message the caller and args
     (let* ((varg (gensym))
            (retval (if (cdr args) varg (list 'car varg))))
-      `(let* ((message-truncate-lines t)
-              print-length
-              print-level
-              (,varg (list ,@args)))
+      `(let ((message-truncate-lines t)
+             print-length
+             print-level
+             (,varg (list ,@args)))
          (apply #'message ,(concat "%s %S  \N{Long Rightwards Arrow From Bar}  " fmt)
                 (quote ,icon) (eyespy-caller) ,varg)
          ,retval))))

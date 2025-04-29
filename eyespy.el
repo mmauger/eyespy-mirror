@@ -218,7 +218,11 @@ the `eyespy-is-caller' property for special cases."
 (defcustom eyespy-is-caller-functions '(eyespy-caller-p
                                         eyespy-match-caller
                                         eyespy-non-system-caller)
-  "A list of functions to decide whether the frame is the caller."
+  "A list of functions to decide whether the backtrace is the caller.
+
+Each function is called with the function symbol of a back trace frame.
+If a function on the list returns a non-nil, no further tests are made.
+`eyespy-is-this-the-caller' is responsible for this process."
   :type '(repeat function))
 
 (defun eyespy--check (func checkers)
@@ -233,6 +237,7 @@ the `eyespy-is-caller' property for special cases."
        (eyespy--check func eyespy-is-caller-functions)))
 
 ;; Loop through the backtrace frames looking for the caller
+;;;###autoload
 (defun eyespy-caller ()
   "Display the meaningful caller."
   (catch 'caller
@@ -266,7 +271,8 @@ process if the VALUE has changed."
     (unless (eq value old-value)
       (set-default-toplevel-value option value)
       ;; Erase the old macro; define the new one
-      (makunbound old-value)
+      (when old-value
+        (makunbound old-value))
       (makunbound value)
       (eval `(defmacro ,value (fmt &rest args)
                ,(format "Calls `eyespy-message' with %S and (FMT . ARGS)." value)

@@ -133,11 +133,11 @@
 ;; Mark functions as potential callers, or not
 (defun eyespy-make-caller (func)
   "Mark FUNC as a caller for eyespy-caller purposes."
-  (put func 'eyespy-caller-function t))
+  (put func 'eyespy-is-caller t))
 
 (defun eyespy-make-not-caller (func)
   "Mark FUNC as /not/ a caller for eyespy-caller purposes."
-  (put func 'eyespy-caller-function nil))
+  (put func 'eyespy-is-caller nil))
 
 (defun eyespy-caller-p (func &optional not)
   "Is FUNC a caller, or NOT."
@@ -283,7 +283,7 @@ process if the VALUE has changed."
 
 ;;;###autoload
 (defcustom eyespy-icon '👀
-  "The command for eyespy messaging and the prefix in the `*Messages*' buffer."
+  "The function name to invoke eyespy messaging and the prefix for the message."
   :set #'eyespy--customize-set-icon
   :initialize #'custom-initialize-set
   :type 'symbol)
@@ -334,22 +334,26 @@ Bind this to a function key to easily insert an eyespy message."
   (let (fmt)
     (if (stringp (car args))
         ;; `message'-like parameters
-        (setq fmt (car args)
+        (setq fmt (concat "\s\s\N{Long Rightwards Arrow From Bar}\s\s" (car args))
               args (cdr args))
       ;; Each non-nil parameter has a format
-      (setq args (cl-remove-if #'not args)
+      (setq args (delete nil args)
             fmt (mapconcat
-                 (lambda (arg) (format "%s=%%S" arg))
-                 args
-                 " \N{Middle Dot} ")))
+                 (lambda (arg)
+                   (format "%s %s %s %%S"
+                           (if (= 1 (length args))
+                               "\s\s\N{Long Rightwards Arrow From Bar}\s"
+                             "\n\s\s\N{Single Right-Pointing Angle Quotation Mark}")
+                           arg "\N{Rightwards Double Arrow}\s"))
+                 args)))
     ;; Generate the macro code to message the caller and args
     (let* ((varg (gensym))
            (retval (if (cdr args) varg (list 'car varg))))
-      `(let ((message-truncate-lines t)
+      `(let (message-truncate-lines
              print-length
              print-level
              (,varg (list ,@args)))
-         (apply #'message ,(concat "%s %S  \N{Long Rightwards Arrow From Bar}  " fmt)
+         (apply #'message ,(concat "%s %S" fmt)
                 (quote ,icon) (eyespy-caller) ,varg)
          ,retval))))
 

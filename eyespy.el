@@ -171,10 +171,12 @@
   :group 'lisp)
 
 ;; Mark functions as potential callers, or not
+;;;###autoload
 (defun eyespy-make-caller (func)
   "Mark FUNC as a caller for eyespy-caller purposes."
   (put func 'eyespy-is-caller t))
 
+;;;###autoload
 (defun eyespy-make-not-caller (func)
   "Mark FUNC as /not/ a caller for eyespy-caller purposes."
   (put func 'eyespy-is-caller nil))
@@ -193,12 +195,12 @@
 Compare the filename sans the extension (.el, .elc, .eln).  Also check
 the `eyespy-is-caller' property for special cases."
   (let ((eyespy-file (symbol-file 'eyespy-message))
-	(func-file   (symbol-file func)))
+        (func-file   (symbol-file func)))
     (or (eyespy-caller-p func :not)
         (and eyespy-file
-	     func-file
-	     (string= (file-name-sans-extension func-file)
-		      (file-name-sans-extension eyespy-file))))))
+             func-file
+             (string= (file-name-sans-extension func-file)
+                      (file-name-sans-extension eyespy-file))))))
 
 ;; System functions that represent evaluation so that "eval" becomes the caller
 (defcustom eyespy-eval-functions '(elisp--eval-last-sexp
@@ -208,6 +210,7 @@ the `eyespy-is-caller' property for special cases."
   "Functions that indicate that the code is being explicitly evaluated."
   :type '(repeat function))
 
+;;;###autoload
 (defun eyespy-make-eval (func)
   "Mark FUNC as an evaluator for eyespy-caller."
   (push func eyespy-eval-functions))

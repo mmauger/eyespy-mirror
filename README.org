@@ -69,6 +69,14 @@ interesting caller by evaluating the following:
 This marks the function explicitly valuable in the debugging
 messages if encountered in the backtrace.
 
+** Installation
+The ~eyespy~ package can be installed as follows:
+#+BEGIN_SRC emacs-lisp
+  (use-package eyespy
+    :vc ( :url "https://gitlab.com/mmauger/eyespy" )
+    )
+
+#+END_SRC
 ** ~eyespy-message~ function (i.e., the 👀 macro command)
 
 The ~eyespy-message~ function, which the ~👀~ macro invokes, has

@@ -174,11 +174,13 @@
 ;;;###autoload
 (defun eyespy-make-caller (func)
   "Mark FUNC as a caller for eyespy-caller purposes."
+  (interactive "aCaller: ")
   (put func 'eyespy-is-caller t))
 
 ;;;###autoload
 (defun eyespy-make-not-caller (func)
   "Mark FUNC as /not/ a caller for eyespy-caller purposes."
+  (interactive "aNot Caller: ")
   (put func 'eyespy-is-caller nil))
 
 (defun eyespy-caller-p (func &optional not)
@@ -213,6 +215,7 @@ the `eyespy-is-caller' property for special cases."
 ;;;###autoload
 (defun eyespy-make-eval (func)
   "Mark FUNC as an evaluator for eyespy-caller."
+  (interactive "aEval: ")
   (push func eyespy-eval-functions))
 
 ;; Does a function match a list of symbols, or does its name match a regexp?
@@ -283,6 +286,7 @@ If a function on the list returns a non-nil, no further tests are made.
 ;;;###autoload
 (defun eyespy-caller ()
   "Display the meaningful caller."
+  (interactive)
   (catch 'caller
     ;; go back thru frames starting with caller of the log function
     (dolist (frame (cdr (backtrace-get-frames)))
@@ -303,12 +307,14 @@ If a function on the list returns a non-nil, no further tests are made.
             (throw 'caller (cons func args)))))))))
 
 ;; Define the icon symbol to identify the eyespy messaging function and it's messages
+
 ;;;###autoload
 (defun eyespy--customize-set-icon (option value)
   "Set the eyespy OPTION (icon) to VALUE, and define macro to emit a message.
 
 To avoid duplicate messages and repeated definition of the macro, only
 process if the VALUE has changed."
+  (interactive "vIcon Variable (eyespy-icon): \nSValue (👀): ")
   (let ((old-value (ignore-errors
                       (default-toplevel-value option))))
     (unless (eq value old-value)
@@ -374,6 +380,7 @@ Bind this to a function key to easily insert an eyespy message."
 (defun eyespy-message (icon args)
   "Display message ARGS preceded by ICON and the function name."
   ;; Generate suitable `fmt' and `args' values
+  (interactive "SIcon: \nArguments: ")
   (let (fmt)
     (if (stringp (car args))
         ;; `message'-like parameters

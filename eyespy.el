@@ -219,7 +219,6 @@ the `eyespy-is-caller' property for special cases."
   (push func eyespy-eval-functions))
 
 ;; Does a function match a list of symbols, or does its name match a regexp?
-;;;###autoload
 (defcustom eyespy-caller-matchers nil
   "A list of function symbols or regexp that identify calling functions."
   :type '(repeat
@@ -260,7 +259,6 @@ the `eyespy-is-caller' property for special cases."
     (and func-src ;; is not Emacs core C code
          (not (eyespy--is-system-function func-src folder-list)))))
 
-;;;###autoload
 (defcustom eyespy-is-caller-functions '(eyespy-caller-p
                                         eyespy-match-caller
                                         eyespy-non-system-caller)
@@ -283,7 +281,6 @@ If a function on the list returns a non-nil, no further tests are made.
        (eyespy--check func eyespy-is-caller-functions)))
 
 ;; Loop through the backtrace frames looking for the caller
-;;;###autoload
 (defun eyespy-caller ()
   "Display the meaningful caller."
   (interactive)
@@ -330,7 +327,6 @@ process if the VALUE has changed."
       (message "Eyespy with my little %s..." value))
     value))
 
-;;;###autoload
 (defcustom eyespy-icon '👀
   "The function name to invoke eyespy messaging and the prefix for the message."
   :set #'eyespy--customize-set-icon

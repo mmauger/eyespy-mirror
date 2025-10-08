@@ -7,7 +7,7 @@
 ;; Package-Type: simple
 ;; Package-Requires: ((emacs "29.1"))
 ;; Keywords: lisp, extensions, maint, tools
-;; Version: 1.0
+;; Version: 1.0.251008
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -172,60 +172,61 @@
 
 ;; Mark functions as potential callers, or not
 ;;;###autoload
-(defun eyespy-make-caller (func)
-  "Mark FUNC as a caller for eyespy-caller purposes."
+(defun es/make-caller (func)
+  "Mark FUNC as a caller for `eyespy-caller' purposes."
   (interactive "aCaller: ")
-  (put func 'eyespy-is-caller t))
+  (put func 'es/is-caller t))
 
 ;;;###autoload
-(defun eyespy-make-not-caller (func)
-  "Mark FUNC as /not/ a caller for eyespy-caller purposes."
+(defun es/make-not-caller (func)
+  "Mark FUNC as /not/ a caller for `eyespy-caller' purposes."
   (interactive "aNot Caller: ")
-  (put func 'eyespy-is-caller nil))
+  (put func 'es/is-caller nil))
 
-(defun eyespy-caller-p (func &optional not)
+(defun es/caller-p (func &optional not)
   "Is FUNC a caller, or NOT."
-  (let* ((has-caller  (plist-member (symbol-plist func) 'eyespy-is-caller))
+  (let* ((has-caller  (plist-member (symbol-plist func) 'es/is-caller))
          (caller-val  (cadr has-caller)))
     (when has-caller
       (eq caller-val (null not)))))
 
 ;; Is this function from this module
-(defun eyespy-this-is-not-the-caller (func)
+(defun es/this-is-not-the-caller (func)
   "Is FUNC part of this module?
 
 Compare the filename sans the extension (.el, .elc, .eln).  Also check
 the `eyespy-is-caller' property for special cases."
-  (let ((eyespy-file (symbol-file 'eyespy-message))
+  (let ((eyespy-file (symbol-file 'es/message))
         (func-file   (symbol-file func)))
-    (or (eyespy-caller-p func :not)
+    (or (es/caller-p func :not)
         (and eyespy-file
              func-file
              (string= (file-name-sans-extension func-file)
                       (file-name-sans-extension eyespy-file))))))
 
 ;; System functions that represent evaluation so that "eval" becomes the caller
-(defcustom eyespy-eval-functions '(elisp--eval-last-sexp
-                                   eval-print-last-sexp
-                                   pp-eval-expression
-                                   pp-eval-last-sexp)
+(defcustom es/eval-functions
+  '( elisp--eval-last-sexp
+     eval-print-last-sexp
+     pp-eval-expression
+     pp-eval-last-sexp )
   "Functions that indicate that the code is being explicitly evaluated."
   :type '(repeat function))
 
 ;;;###autoload
-(defun eyespy-make-eval (func)
-  "Mark FUNC as an evaluator for eyespy-caller."
+(defun es/make-eval (func)
+  "Mark FUNC as an evaluator for `eyespy-caller'."
   (interactive "aEval: ")
-  (push func eyespy-eval-functions))
+  (push func es/eval-functions))
 
 ;; Does a function match a list of symbols, or does its name match a regexp?
-(defcustom eyespy-caller-matchers nil
+(defcustom es/caller-matchers nil
   "A list of function symbols or regexp that identify calling functions."
   :type '(repeat
           (choice (string :tag "Regexp to match function name")
                   (function :tag "Matched function"))))
 
-(defun eyespy--match (func matchers)
+(defun es/-match (func matchers)
   "Internal: match FUNC to one of the MATCHERS."
   (when-let* ((this-matcher  (car matchers))
               (tail-matchers (cdr matchers)))
@@ -233,21 +234,21 @@ the `eyespy-is-caller' property for special cases."
              (eq func this-matcher))
         (and (stringp this-matcher)
              (string-match-p this-matcher (symbol-name func)))
-        (eyespy--match func tail-matchers))))
+        (es/-match func tail-matchers))))
 
-(defun eyespy-match-caller (func)
+(defun es/match-caller (func)
   "Does FUNC match any entries in `eyespy-caller-matchers'."
-  (and eyespy-caller-matchers
-       (eyespy--match func eyespy-caller-matchers)))
+  (and es/caller-matchers
+       (es/-match func es/caller-matchers)))
 
 ;; Identify functions that are not from Emacs itself
-(defun eyespy--is-system-function (func-file-name folders)
+(defun es/-is-system-function (func-file-name folders)
   "Internal: Is the FUNC-FILE-NAME in any of the FOLDERS trees?"
   (when folders
     (or (string-prefix-p (car folders) func-file-name)
-        (eyespy--is-system-function func-file-name (cdr folders)))))
+        (es/-is-system-function func-file-name (cdr folders)))))
 
-(defun eyespy-non-system-caller (func)
+(defun es/non-system-caller (func)
   "Does FUNC is not in the distribution or ELPA folder."
   (let* ((system-folders (list
                           installation-directory
@@ -257,11 +258,12 @@ the `eyespy-is-caller' property for special cases."
          (folder-list (delete-dups (mapcar #'expand-file-name (flatten-list system-folders))))
          (func-src (symbol-file func 'defun)))
     (and func-src ;; is not Emacs core C code
-         (not (eyespy--is-system-function func-src folder-list)))))
+         (not (es/-is-system-function func-src folder-list)))))
 
-(defcustom eyespy-is-caller-functions '(eyespy-caller-p
-                                        eyespy-match-caller
-                                        eyespy-non-system-caller)
+(defcustom es/is-caller-functions
+  '( es/caller-p
+     es/match-caller
+     es/non-system-caller )
   "A list of functions to decide whether the backtrace is the caller.
 
 Each function is called with the function symbol of a back trace frame.
@@ -269,19 +271,19 @@ If a function on the list returns a non-nil, no further tests are made.
 `eyespy-is-this-the-caller' is responsible for this process."
   :type '(repeat function))
 
-(defun eyespy--check (func checkers)
+(defun es/-check (func checkers)
   "Internal: check FUNC in each CHECKERS function."
   (when checkers
     (or (funcall (car checkers) func)
-        (eyespy--check func (cdr checkers)))))
+        (es/-check func (cdr checkers)))))
 
-(defun eyespy-is-this-the-caller (func)
+(defun es/is-this-the-caller (func)
   "Is this FUNC the likely caller of the trace function."
-  (and eyespy-is-caller-functions
-       (eyespy--check func eyespy-is-caller-functions)))
+  (and es/is-caller-functions
+       (es/-check func es/is-caller-functions)))
 
 ;; Loop through the backtrace frames looking for the caller
-(defun eyespy-caller ()
+(defun es/caller ()
   "Display the meaningful caller."
   (interactive)
   (catch 'caller
@@ -294,19 +296,19 @@ If a function on the list returns a non-nil, no further tests are made.
           (cond
            ;; ignore eyespy functions;
            ;; we can't use eyespy on eyespy...
-           ((eyespy-this-is-not-the-caller func)
+           ((es/this-is-not-the-caller func)
             nil)
            ;; did we C-x C-e the expression
-           ((memq func eyespy-eval-functions)
+           ((memq func es/eval-functions)
             (throw 'caller 'eval))
            ;; Is function the caller
-           ((eyespy-is-this-the-caller func)
+           ((es/is-this-the-caller func)
             (throw 'caller (cons func args)))))))))
 
 ;; Define the icon symbol to identify the eyespy messaging function and it's messages
 
 ;;;###autoload
-(defun eyespy--customize-set-icon (option value)
+(defun es/-customize-set-icon (option value)
   "Set the eyespy OPTION (icon) to VALUE, and define macro to emit a message.
 
 To avoid duplicate messages and repeated definition of the macro, only
@@ -322,19 +324,20 @@ process if the VALUE has changed."
       (makunbound value)
       (eval `(defmacro ,value (fmt &rest args)
                ,(format "Calls `eyespy-message' with %S and (FMT . ARGS)." value)
-               (eyespy-message (quote ,value) (cons fmt args))))
+               (es/message (quote ,value) (cons fmt args))))
       ;; Announce the new setting
       (message "Eyespy with my little %s..." value))
     value))
 
-(defcustom eyespy-icon '👀
+(defcustom es/icon '👀
   "The function name to invoke eyespy messaging and the prefix for the message."
-  :set #'eyespy--customize-set-icon
+  :set #'es/-customize-set-icon
   :initialize #'custom-initialize-set
   :type 'symbol)
+;;;###autoload (autoload '👀 "eyespy" nil nil 'macro)
 
 ;;;###autoload
-(defun eyespy-insert ()
+(defun es/insert ()
   "Insert a call to the trace message macro.
 
 If there is an active region, insert the region as the expression passed
@@ -354,7 +357,7 @@ Bind this to a function key to easily insert an eyespy message."
       (goto-char (cdr bounds))))
   ;; insert the call to the macro, wrapping around the selected region
   (let (skeleton-end-newline)
-    (skeleton-insert '(nil "(" (symbol-name eyespy-icon) "\s" _ ")")
+    (skeleton-insert '(nil "(" (symbol-name es/icon) "\s" _ ")")
                      (when (use-region-p) -1)))
   (pop-mark)
   ;; If not at the end of the line (ignoring spaces and comments)
@@ -373,7 +376,7 @@ Bind this to a function key to easily insert an eyespy message."
 ;; The eyespy messaging function that generates the macro code that
 ;; produces the actual message.
 ;;;###autoload
-(defun eyespy-message (icon args)
+(defun es/message (icon args)
   "Display message ARGS preceded by ICON and the function name."
   ;; Generate suitable `fmt' and `args' values
   (interactive "SIcon: \nArguments: ")
@@ -400,9 +403,13 @@ Bind this to a function key to easily insert an eyespy message."
              print-level
              (,varg (list ,@args)))
          (apply #'message ,(concat "%s %S" fmt)
-                (quote ,icon) (eyespy-caller) ,varg)
+                (quote ,icon) (es/caller) ,varg)
          ,retval))))
 
 (provide 'eyespy)
 ; LocalWords:  eyespy
 ;;; eyespy.el ends here
+;; Local Variables:
+;; read-symbol-shorthands: (("es/" . "eyespy-"))
+;; time-stamp-pattern: "20/Version:[\s\t]*\\(?:[[:digit:]]+[.]\\)+%y%m%d\n"
+;; End:

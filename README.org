@@ -73,7 +73,7 @@ messages if encountered in the backtrace.
 The ~eyespy~ package can be installed as follows:
 #+BEGIN_SRC emacs-lisp
   (use-package eyespy
-    :vc ( :url "https://gitlab.com/mmauger/eyespy" )
+    :vc ( :url "https://codeberg.org/mmauger/eyespy" )
     )
 
 #+END_SRC

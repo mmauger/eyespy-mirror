@@ -7,7 +7,7 @@
 ;; Package-Type: simple
 ;; Package-Requires: ((emacs "29.1"))
 ;; Keywords: lisp, extensions, maint, tools
-;; Version: 1.0.251008
+;; Version: 1.0.260531
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -284,6 +284,29 @@ If a function on the list returns a non-nil, no further tests are made.
   (and es/is-caller-functions
        (es/-check func es/is-caller-functions)))
 
+;; Make ASCII C0 control characters visible
+;; For use with `format-replace-strings'
+(defvar es/visible-characters-alist
+  (let ((ch-alist nil))
+    (dotimes (ch 32)  ;; All C0 control characters
+      (push (cons (string ch)
+                  (string (+ ?\N{Symbol For Null} ch)))
+            ch-alist))
+    (nreverse ch-alist))
+  "Alist of invisible characters and their replacement.")
+
+(defun es/-visible-arguments (args)
+  "Make string ARGS visible; all others unchanged."
+  (mapcar
+   (lambda (arg)
+     (if (stringp arg)
+         (with-temp-buffer
+           (insert arg)
+           (format-replace-strings es/visible-characters-alist)
+           (buffer-string))
+       arg))
+   args))
+
 ;; Loop through the backtrace frames looking for the caller
 (defun es/caller ()
   "Display the meaningful caller."
@@ -305,7 +328,8 @@ If a function on the list returns a non-nil, no further tests are made.
             (throw 'caller 'eval))
            ;; Is function the caller
            ((es/is-this-the-caller func)
-            (throw 'caller (cons func args)))))))))
+            (throw 'caller
+                   (cons func (es/-visible-arguments args))))))))))
 
 ;; Define the icon symbol to identify the eyespy messaging function and it's messages
 

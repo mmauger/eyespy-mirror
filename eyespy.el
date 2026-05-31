@@ -142,15 +142,17 @@
 ;; messages with the same icon makes finding them in the `*Messages*'
 ;; buffer simple with \\[isearch-forward] or \\[occur].
 
-;; When you install eyespy, you can bind ~eyespy-insert~ in Emacs Lisp
-;; source buffers to insert a macro call either around current symbol or
-;; selected region.  For example:
+;; When you install eyespy, you can bind `eyespy-insert' in Emacs Lisp
+;; source buffers to insert a macro call either around current symbol
+;; or selected region.  And you can bind `eyespy-delete' to remove the
+;; current or next eyespy call.  For example:
 ;;
 ;;     (define-key lisp-mode-shared-map [?\C-c ?E] #'eyespy-insert)
+;;     (define-key lisp-mode-shared-map [?\C-c ?D] #'eyespy-delete)
 ;;
-;; Now when in the ~*scratch*~ buffer or in an Emacs Lisp file, we can
+;; Now when in the `*scratch*' buffer or in an Emacs Lisp file, we can
 ;; insert a debugging print statement in the code fairly easily.  Based
-;; on where the cursor is when ~eyespy-insert~ is invoked, the result is
+;; on where the cursor is when `eyespy-insert' is invoked, the result is
 ;; shown below (point is indicated by "‸"):
 ;;
 ;;    ‸                                    ⤅  (👀 ‸)
@@ -361,17 +363,43 @@ Bind this to a function key to easily insert an eyespy message."
                      (when (use-region-p) -1)))
   (pop-mark)
   ;; If not at the end of the line (ignoring spaces and comments)
-  (unless (looking-at-p (rx (0+ space)
-                            (optional (literal comment-start) (0+ any))
-                            eol))
-    ;; skip forward to the next sexp on the line
-    (let ((here (point)))
-      (condition-case nil
-          (progn
-            (forward-sexp)
-            (unless (= (point) here)
-              (backward-sexp)))
-        (scan-error nil)))))
+  (rx-let ((opt-comment-re (eval (if comment-start
+                                     '(? (literal comment-start) (* nonl))
+                                   ""))))
+    (unless (looking-at-p (rx (* space) opt-comment-re eol))
+      ;; skip forward to the next sexp
+      (let ((here (point)))
+        (condition-case nil
+            (progn
+              (forward-sexp)
+              (unless (= (point) here)
+                (backward-sexp)))
+          (scan-error nil))))))
+
+;;;###autoload
+(defun es/delete ()
+  "Remove a call to the trace message macro but leave the arguments."
+  (interactive)
+  ;; Move to the start of the enclosing sexp
+  (when-let* ((bounds (bounds-of-thing-at-point 'sexp))
+              ( (> (point) (car bounds)) ))
+    (condition-case _
+        (backward-up-list 1 t t)
+      (t
+       (goto-char (car bounds)))))
+  ;; Move to the next eyespy expressions
+  (when (search-forward-regexp
+         (rx ?\(
+             (group (* space)
+                    (literal (symbol-name es/icon))
+                    (+ space)))
+         nil t)
+    (let ((b-paren (match-beginning 0))
+          (b-caller (match-beginning 1))
+          (e-caller (match-end 1)))
+      (delete-region b-caller e-caller)  ; delete the icon and trailing white-space
+      (goto-char b-paren)
+      (delete-pair))))
 
 ;; The eyespy messaging function that generates the macro code that
 ;; produces the actual message.

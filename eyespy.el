@@ -430,9 +430,54 @@ Bind this to a function key to easily insert an eyespy message."
              print-length
              print-level
              (,varg (list ,@args)))
-         (apply #'message ,(concat "%s %S" fmt)
-                (quote ,icon) (es/caller) ,varg)
+         (apply #'message
+                ,(concat "%s %S" fmt)
+                (quote ,icon)
+                (es/caller)
+                ,varg)
          ,retval))))
+
+;; Trace a function
+(defvar es/trace-icon "\N{Footprints}"
+  "Icon for tracing messages.")
+
+(defvar es/backtrace-icon "\N{Foot}"
+  "Icon for each backtrace step.")
+
+(defun es/untrace (function)
+  "Remove advice around FUNCTION that reports the arguments and return value."
+  (let ((trace-name (format "eyespy-trace/%s" function)))
+    (when (advice-member-p trace-name function)
+      (message "%s Untracing %S..." es/trace-icon function)
+      (advice-remove function trace-name))))
+
+;;;###autoload
+(defun es/trace (function)
+  "Create advice around FUNCTION that reports the arguments and return value."
+  (es/untrace function)
+  (message "%s Tracing %S..." es/trace-icon function)
+  (advice-add function :around
+              (lambda (func &rest args)
+                "Trace FUNC and then call with ARGS."
+                (let ((func-call (cons function (es/-visible-arguments args)))
+                      (func-re (rx bos (* space) (literal (symbol-name function)) "("))
+                      (back-trace (string-lines (backtrace-to-string)))
+                      (found nil))
+                  (message "%s %S" es/trace-icon func-call)
+                  (while back-trace
+                    (if found
+                        (message "\s\s\s\s%s %s" es/backtrace-icon (string-trim (car back-trace)))
+                      (setq found (string-match-p func-re (car back-trace))))
+                    (setq back-trace (cdr back-trace)))
+                  (condition-case err
+                      (let ((retval (apply func args)))
+                        (message "%s %S: \N{Rightwards Double Arrow} %S" es/trace-icon func-call retval)
+                        retval)
+                    (t
+                     (message "%s %S: ERROR: %S" es/trace-icon func-call
+                              (error-message-string err))
+                     nil))))
+              (list (cons 'name (format "eyespy-trace/%s" function)))))
 
 (provide 'eyespy)
 ; LocalWords:  eyespy
